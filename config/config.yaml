@@ -1,0 +1,35 @@
+repositories:
+  k3s-local:
+    directory: /home/merkushev/workspace/dev-configs/k3s-local
+  bkms:
+    directory: /home/merkushev/workspace/bkms-app
+  cl:
+    directory: /home/merkushev/workspace/central-login
+    profile: app
+  resources:
+    directory: /home/merkushev/workspace/resources-service
+  i18n:
+    directory: /home/merkushev/workspace/i18n-service
+
+s3-buckets:
+  - bkms-config
+  - bkms-assets
+  - bkms-data
+
+kubernetes-ns:
+  - env
+  - env-databases
+
+dependency:
+  bkms:
+    - i18n
+    - resources
+    - cl
+
+dbs:
+  bkms:
+    - bkmsdb
+    - bkmsbatchdb
+    - bkmsvidb
+  cl:
+    - bkmscldb
