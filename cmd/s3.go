@@ -18,24 +18,38 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // s3Cmd represents the s3 command
 var s3Cmd = &cobra.Command{
 	Use:   "s3",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Operations with s3 storage",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("s3 called")
 	},
 }
 
+var s3ListBuckets = &cobra.Command{
+	Use:   "list-buckets",
+	Short: "List of buckets",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("s3 list buckets")
+	},
+}
+
+var s3ListObjects = &cobra.Command{
+	Use:   "list-objects",
+	Short: "List of objects",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("s3 list buckets")
+	},
+}
+
 func init() {
+	viper.BindPFlag("account-id", s3Cmd.PersistentFlags().Lookup("accountId"))
+
+	s3Cmd.AddCommand(s3ListBuckets)
 	rootCmd.AddCommand(s3Cmd)
 
 	// Here you will define your flags and configuration settings.
