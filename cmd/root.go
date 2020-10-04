@@ -1,5 +1,4 @@
-/*
-Copyright © 2020 NAME HERE <EMAIL ADDRESS>
+/*Package cmd Copyright © 2020 NAME HERE <EMAIL ADDRESS>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +18,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/merkio/dev-tools/config"
-
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -31,18 +28,13 @@ var cfgFile string
 
 // devCmd represents the command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "",
+	Use:   "dev-tools",
 	Short: "Dev tools for local environment",
 	Long: `Dev Tools for local environment
-		Now we have list of subcommands:
+		You can user one of the subcommands:
 			- s3 (help to work with s3, e.g. backup, restore, list etc.)
-			- dev (help to start services localy for development)
+			- dev (help to start services locally for development)
 	`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Read config file from separated module")
-
-		config.Config(cfgFile)
-	},
 }
 
 //

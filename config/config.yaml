@@ -1,3 +1,9 @@
+configs:
+  cluster: https://
+  services:
+    - https://
+    - https://
+
 repositories:
   k3s-local:
     directory: /home/merkushev/workspace/dev-configs/k3s-local

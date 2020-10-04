@@ -14,7 +14,7 @@ import (
 )
 
 // Config reading the config file to continue
-func Config(configFile string) {
+func Config(configFile string) map[string]interface{} {
 	dPath := os.Getenv("DEV_CONFIG")
 	// Build config path
 	cPath := filepath.Join(dPath, "config.yaml")
@@ -39,16 +39,16 @@ func Config(configFile string) {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(dPath)
 	viper.AddConfigPath(usr.HomeDir)
+	viper.AddConfigPath(filepath.Join(usr.HomeDir, ".aws"))
 
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: \n%s", err))
 	}
-	fmt.Println(viper.Get("dependency.bkms"))
 
 	// Read properties file with aws settings
 	viper.SetConfigType("properties")
-	viper.SetConfigName("aws_credentials")
+	viper.SetConfigName("credentials")
 
 	// Merge all configs in one map
 	err = viper.MergeInConfig() // Find and read the config file
@@ -56,18 +56,18 @@ func Config(configFile string) {
 		panic(fmt.Errorf("Fatal error config file: \n%s", err))
 	}
 
-	fmt.Println(viper.AllKeys())
-
 	// Open the git repository
-	r, err := git.PlainOpen(filepath.Join(usr.HomeDir, "workspace", "src/github.com/quiz"))
+	repoPath := filepath.Join(usr.HomeDir, "workspace", "src/github.com/quiz")
+	r, err := git.PlainOpen(repoPath)
 
 	// Read head of the current branch in the repository
-	fmt.Println(r.Head())
+	head, err := r.Head()
+	fmt.Printf("Read Head from repository: %s - %+v\n", repoPath, head)
 
 	// Looking for the execution file with name in the PATH
 	path, err := exec.LookPath("kubectl")
 	if err != nil {
-		log.Fatal("installing kubectl is in your future")
+		log.Fatal("installing kubectl is in your future\n")
 	}
 	fmt.Printf("kubectl is available at %s\n", path)
 
@@ -79,5 +79,7 @@ func Config(configFile string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Get list of the files: %q\n", out.String())
+	fmt.Printf("Get list of the files: %s\n", out.String())
+
+	return viper.AllSettings()
 }
