@@ -22,6 +22,8 @@ func Config() *viper.Viper {
 
 	dPath, exist := os.LookupEnv("DEV_CONFIG")
 
+	viper.Set("BackupDir", filepath.Join(usr.HomeDir, "bkms-backup"))
+
 	if !exist {
 		dPath = usr.HomeDir
 	}

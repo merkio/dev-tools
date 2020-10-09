@@ -73,9 +73,14 @@ func CreateBucket(bucket string) {
 }
 
 // DeleteBucket delete bucket with name
-func DeleteBucket(bucket string) {
+func DeleteBucket(bucket string, force bool) {
 	fmt.Printf("Delete s3 bucket %s\n", bucket)
 	svc := s3.New(createSession())
+
+	if force {
+		DeleteObjects(bucket, ListObjects(bucket))
+	}
+
 	input := &s3.DeleteBucketInput{
 		Bucket: aws.String(bucket),
 	}
@@ -179,6 +184,15 @@ func DownloadObject(bucket string, key string, to string) {
 	fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
 }
 
+// DownloadBucket download all files from bucket to the path
+func DownloadBucket(bucket string, to string) {
+	for _, obj := range ListObjects(bucket) {
+		path := filepath.Join(to, bucket, obj)
+
+		DownloadObject(bucket, obj, path)
+	}
+}
+
 // DeleteObject remove object from the bucket with key
 func DeleteObject(bucket string, key string) {
 	fmt.Printf("Delete object %s from bucket %s\n", key, bucket)
@@ -195,6 +209,42 @@ func DeleteObject(bucket string, key string) {
 		Key:    aws.String(key),
 	})
 	fmt.Printf("Object %s successfully deleted\n", key)
+}
+
+// DeleteObjects delete all objects in specific bucket
+func DeleteObjects(bucket string, keys []string) {
+	objects := make([]*s3.ObjectIdentifier, len(keys))
+
+	for _, key := range keys {
+		object := s3.ObjectIdentifier{
+			Key: aws.String(key),
+		}
+		objects = append(objects, &object)
+	}
+	input := &s3.DeleteObjectsInput{
+		Bucket: aws.String(bucket),
+		Delete: &s3.Delete{
+			Objects: objects,
+			Quiet:   aws.Bool(false),
+		},
+	}
+
+	svc := s3.New(createSession())
+	result, err := svc.DeleteObjects(input)
+	if err != nil {
+		if err, ok := err.(awserr.Error); ok {
+			switch err.Code() {
+			default:
+				fmt.Println(err.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return
+	}
+	fmt.Println(result)
 }
 
 func createSession() *session.Session {
