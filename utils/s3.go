@@ -8,16 +8,18 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/merkio/dev-tools/config"
 )
 
 // ListBuckets print list of buckets
-func ListBuckets() {
+func ListBuckets() []string {
 
 	// Create a S3 client from just a session.
-	svc := s3.New(session.New())
+	svc := s3.New(createSession())
 
 	input := &s3.ListBucketsInput{}
 
@@ -31,16 +33,18 @@ func ListBuckets() {
 		} else {
 			fmt.Println(err.Error())
 		}
-		return
+		return []string{}
 	}
 
-	fmt.Println(result)
+	return bucketsToStrings(result.Buckets, func(b s3.Bucket) string {
+		return *(b.Name)
+	})
 }
 
 // CreateBucket create bucket with name
 func CreateBucket(bucket string) {
 	fmt.Printf("Create bucket %s\n", bucket)
-	svc := s3.New(session.New())
+	svc := s3.New(createSession())
 	input := &s3.CreateBucketInput{
 		Bucket:                    aws.String(bucket),
 		CreateBucketConfiguration: &s3.CreateBucketConfiguration{},
@@ -71,7 +75,7 @@ func CreateBucket(bucket string) {
 // DeleteBucket delete bucket with name
 func DeleteBucket(bucket string) {
 	fmt.Printf("Delete s3 bucket %s\n", bucket)
-	svc := s3.New(session.New())
+	svc := s3.New(createSession())
 	input := &s3.DeleteBucketInput{
 		Bucket: aws.String(bucket),
 	}
@@ -95,9 +99,9 @@ func DeleteBucket(bucket string) {
 }
 
 // ListObjects return slice of objects for bucket
-func ListObjects(bucket string) []*s3.Object {
+func ListObjects(bucket string) []string {
 	fmt.Printf("List objects in the bucket %s\n", bucket)
-	svc := s3.New(session.New())
+	svc := s3.New(createSession())
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
 		MaxKeys: aws.Int64(2),
@@ -118,13 +122,15 @@ func ListObjects(bucket string) []*s3.Object {
 			fmt.Println(err.Error())
 		}
 	}
-	return result.Contents
+	return objectsToStrings(result.Contents, func(v s3.Object) string {
+		return *(v.Key)
+	})
 }
 
 // UploadObject upload file to the bucket with key and tag
 func UploadObject(bucket string, filePath string, key string, tag string) {
 	fmt.Printf("Upload file %s to the bucket %s\n", filePath, bucket)
-	svc := s3.New(session.New())
+	svc := s3.New(createSession())
 	input := &s3.PutObjectInput{
 		Body:    aws.ReadSeekCloser(strings.NewReader(filePath)),
 		Bucket:  aws.String(bucket),
@@ -153,7 +159,7 @@ func UploadObject(bucket string, filePath string, key string, tag string) {
 // DownloadObject put file to the path with key
 func DownloadObject(bucket string, key string, to string) {
 	fmt.Printf("Download file %s from bucket %s to the path %s\n", key, bucket, to)
-	downloader := s3manager.NewDownloader(session.New())
+	downloader := s3manager.NewDownloader(createSession())
 	// Download the item from the bucket. If an error occurs, call exitErrorf. Otherwise, notify the user that the download succeeded.
 
 	filePath := filepath.Join(to, key)
@@ -177,7 +183,7 @@ func DownloadObject(bucket string, key string, to string) {
 func DeleteObject(bucket string, key string) {
 	fmt.Printf("Delete object %s from bucket %s\n", key, bucket)
 
-	svc := s3.New(session.New())
+	svc := s3.New(createSession())
 	_, err := svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
 
 	if err != nil {
@@ -189,4 +195,33 @@ func DeleteObject(bucket string, key string) {
 		Key:    aws.String(key),
 	})
 	fmt.Printf("Object %s successfully deleted\n", key)
+}
+
+func createSession() *session.Session {
+	cfgMap := config.Config()
+	awsSecret := cfgMap.GetString("aws_secret_access_key")
+	awsAccessKey := cfgMap.GetString("aws_access_key_id")
+	endpointURL := cfgMap.GetString("endpoint_url")
+
+	fmt.Printf("Create session with params: key: %s, secret: %s, endpoint: %s", awsAccessKey, awsSecret, endpointURL)
+	return session.New(&aws.Config{
+		Credentials: credentials.NewStaticCredentials(awsAccessKey, awsSecret, ""),
+		Region:      aws.String("us-west-2"),
+		Endpoint:    aws.String(endpointURL)})
+}
+
+func objectsToStrings(vs []*s3.Object, f func(s3.Object) string) []string {
+	vsm := make([]string, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(*v)
+	}
+	return vsm
+}
+
+func bucketsToStrings(vs []*s3.Bucket, f func(s3.Bucket) string) []string {
+	vsm := make([]string, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(*v)
+	}
+	return vsm
 }
