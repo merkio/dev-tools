@@ -10,6 +10,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+// ConfigMap presentation of config file as a map with maps
+type ConfigMap struct {
+	Repositories map[string]map[string]string `mapstructure:"repositories"`
+	Dependency   map[string][]string          `mapstructure:"dependency"`
+}
+
 // Config return a map with configuration properties and secrets
 func Config() *viper.Viper {
 	// Get user home directory
@@ -59,4 +65,17 @@ func Config() *viper.Viper {
 		panic(fmt.Errorf("Fatal error config file: \n%s", err))
 	}
 	return viper.GetViper()
+}
+
+// GetConfigMap get configuration map
+func GetConfigMap() ConfigMap {
+	Config()
+	configMap := &ConfigMap{}
+	err := viper.Unmarshal(configMap)
+
+	if err != nil {
+		log.Fatalf("unable to decode into struct, %v", err)
+	}
+
+	return *configMap
 }

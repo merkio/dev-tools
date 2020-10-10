@@ -17,27 +17,72 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/merkio/dev-tools/config"
+	"github.com/merkio/dev-tools/utils"
 	"github.com/spf13/cobra"
 )
+
+var service string
+var mode string
+var namespace string
 
 // devCmd represents the dev command
 var devCmd = &cobra.Command{
 	Use:   "dev",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Commands to work with local services (e.g. start, stop, start-dependency etc.)",
+	Long:  ``,
+}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+var startService = &cobra.Command{
+	Use:   "start",
+	Short: "Start only one service in specific mode",
 	Run: func(cmd *cobra.Command, args []string) {
-		for key, item := range config.Config().AllSettings() {
-			fmt.Printf("Key: %s, Value: %+v\n", key, item)
+		if mode == "" {
+			mode = "dev"
+		}
+		if service != "" {
+			utils.StartService(service, mode)
+		} else {
+			fmt.Println("You need to specify what service do you want to start")
+		}
+	},
+}
+
+var startDependencies = &cobra.Command{
+	Use:   "start-dep",
+	Short: "Start dependencies for the service",
+	Run: func(cmd *cobra.Command, args []string) {
+		if service != "" {
+			utils.StartDependencies(service)
+		} else {
+			fmt.Println("You need to specify what service do you want to start")
+		}
+	},
+}
+
+var stopNS = &cobra.Command{
+	Use:   "stop",
+	Short: "Stop services|service in the namespace",
+	Run: func(cmd *cobra.Command, args []string) {
+		if service != "" {
+			utils.StopBKMSService(service, namespace)
+		} else {
+			utils.StopBKMSServices(namespace)
 		}
 	},
 }
 
 func init() {
+	startService.Flags().StringVarP(&service, "service", "s", "", "Service name")
+	startService.Flags().StringVarP(&mode, "mode", "m", "", "Service mode")
+
+	startDependencies.Flags().StringVarP(&service, "service", "s", "", "Service name")
+
+	stopNS.Flags().StringVarP(&service, "service", "s", "", "Service name")
+	stopNS.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace")
+
+	devCmd.AddCommand(startService)
+	devCmd.AddCommand(startDependencies)
+	devCmd.AddCommand(stopNS)
+
 	rootCmd.AddCommand(devCmd)
 }

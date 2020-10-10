@@ -78,7 +78,7 @@ func DeleteBucket(bucket string, force bool) {
 	svc := s3.New(createSession())
 
 	if force {
-		DeleteObjects(bucket, ListObjects(bucket))
+		DeleteObjects(bucket, ListObjects(bucket, ""))
 	}
 
 	input := &s3.DeleteBucketInput{
@@ -104,7 +104,7 @@ func DeleteBucket(bucket string, force bool) {
 }
 
 // ListObjects return slice of objects for bucket
-func ListObjects(bucket string) []string {
+func ListObjects(bucket string, filterKey string) []string {
 	fmt.Printf("List objects in the bucket %s\n", bucket)
 	svc := s3.New(createSession())
 	input := &s3.ListObjectsV2Input{
@@ -127,7 +127,8 @@ func ListObjects(bucket string) []string {
 			fmt.Println(err.Error())
 		}
 	}
-	return objectsToStrings(result.Contents, func(v s3.Object) string {
+
+	return objectsToStrings(result.Contents, filterKey, func(v s3.Object) string {
 		return *(v.Key)
 	})
 }
@@ -186,7 +187,7 @@ func DownloadObject(bucket string, key string, to string) {
 
 // DownloadBucket download all files from bucket to the path
 func DownloadBucket(bucket string, to string) {
-	for _, obj := range ListObjects(bucket) {
+	for _, obj := range ListObjects(bucket, "") {
 		path := filepath.Join(to, bucket, obj)
 
 		DownloadObject(bucket, obj, path)
@@ -260,10 +261,16 @@ func createSession() *session.Session {
 		Endpoint:    aws.String(endpointURL)})
 }
 
-func objectsToStrings(vs []*s3.Object, f func(s3.Object) string) []string {
+func objectsToStrings(vs []*s3.Object, filterKey string, f func(s3.Object) string) []string {
 	vsm := make([]string, len(vs))
-	for i, v := range vs {
-		vsm[i] = f(*v)
+	for _, v := range vs {
+		if filterKey != "" {
+			if strings.Contains(*v.Key, filterKey) {
+				vsm = append(vsm, f(*v))
+			}
+		} else {
+			vsm = append(vsm, f(*v))
+		}
 	}
 	return vsm
 }

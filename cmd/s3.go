@@ -16,7 +16,10 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/merkio/dev-tools/utils"
 	"github.com/spf13/cobra"
@@ -50,12 +53,12 @@ var listObjects = &cobra.Command{
 	Short: "List of objects",
 	Run: func(cmd *cobra.Command, args []string) {
 		if bucket != "" {
-			for _, obj := range utils.ListObjects(bucket) {
+			for _, obj := range utils.ListObjects(bucket, accountID) {
 				fmt.Println(obj)
 			}
 		} else {
 			for _, bucket := range utils.ListBuckets() {
-				for _, obj := range utils.ListObjects(bucket) {
+				for _, obj := range utils.ListObjects(bucket, accountID) {
 					fmt.Println(obj)
 				}
 			}
@@ -84,9 +87,13 @@ var backupToDisk = &cobra.Command{
 		} else {
 			viper.Set("BackupDir", to)
 		}
-
-		for _, bucket := range utils.ListBuckets() {
-			utils.DownloadBucket(bucket, viper.GetString("BackupDir"))
+		to = viper.GetString("BackupDir")
+		if bucket != "" {
+			utils.DownloadBucket(bucket, to)
+		} else {
+			for _, bucket := range utils.ListBuckets() {
+				utils.DownloadBucket(bucket, to)
+			}
 		}
 	},
 }
@@ -95,7 +102,28 @@ var restoreFromDisk = &cobra.Command{
 	Use:   "restore-from-disk",
 	Short: "Restore files from the local disk",
 	Run: func(cmd *cobra.Command, args []string) {
-
+		err := filepath.Walk(from,
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				paths := strings.SplitN(path, string(filepath.Separator), 1)
+				if len(paths) < 2 {
+					fmt.Printf("Wrong path [%s] in the backup directory, cannot get bucket name and file path", path)
+				}
+				if accountID != "" {
+					if strings.Contains(paths[1], accountID) {
+						utils.UploadObject(paths[0], paths[1], paths[1], accountID)
+					}
+				} else {
+					utils.UploadObject(paths[0], paths[1], paths[1], "")
+				}
+				return nil
+			})
+		if err != nil {
+			log.Println(err)
+		}
 	},
 }
 
