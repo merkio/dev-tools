@@ -99,9 +99,9 @@ func StopBKMSServices(namespace string) {
 func startService(path string, profile string, mode string) {
 
 	k8s := filepath.Join(path, "k8s")
-	error := os.Chdir(k8s)
-	if error != nil {
-		log.Fatalf("Unable to change directory to %s, %v", k8s, error)
+	err := os.Chdir(k8s)
+	if err != nil {
+		log.Fatalf("Unable to change directory to %s, %v", k8s, err)
 	}
 	RunService(k8s, profile, mode)
 }
@@ -109,9 +109,9 @@ func startService(path string, profile string, mode string) {
 func stopService(path string, namespace string, profile string) {
 
 	k8s := filepath.Join(path, "k8s")
-	error := os.Chdir(k8s)
-	if error != nil {
-		log.Fatalf("Unable to change directory to %s, %v", k8s, error)
+	err := os.Chdir(k8s)
+	if err != nil {
+		log.Fatalf("Unable to change directory to %s, %v", k8s, err)
 	}
 	StopService(k8s, namespace, profile)
 }
