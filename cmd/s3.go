@@ -32,7 +32,6 @@ var from string
 var to string
 var force bool
 
-// s3Cmd represents the s3 command
 var s3Cmd = &cobra.Command{
 	Use:   "s3",
 	Short: "Operations with s3 storage",

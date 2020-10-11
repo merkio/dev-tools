@@ -25,11 +25,9 @@ var service string
 var mode string
 var namespace string
 
-// devCmd represents the dev command
 var devCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Commands to work with local services (e.g. start, stop, start-dependency etc.)",
-	Long:  ``,
 }
 
 var startService = &cobra.Command{
@@ -68,6 +66,22 @@ var stopNS = &cobra.Command{
 		} else {
 			utils.StopBKMSServices(namespace)
 		}
+	},
+}
+
+var createS3Buckets = &cobra.Command{
+	Use: "create-buckets",
+	Short: "Create list of necessary buckets on the local S3",
+	Run: func(cmd *cobra.Command, args []string) {
+		utils.CreateBuckets()
+	},
+}
+
+var prepareLocalCluster = &cobra.Command{
+	Use:   "prepare",
+	Short: "Execute preparation steps for local cluster (e.g. create namespaces, create s3 buckets, create databases)",
+	Run: func(cmd *cobra.Command, args []string) {
+
 	},
 }
 

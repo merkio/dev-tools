@@ -9,24 +9,60 @@ import (
 	"github.com/merkio/dev-tools/config"
 )
 
-// CreateDatabase preparation step, creates dbs for the services
-func CreateDatabase(service string, dbName string) {
-
+// PrepareLocalCluster preparation steps, execute env-
+func PrepareLocalCluster() {
+	setupRepo := "https://gitlab.business-keeper.local/dev/v2/kubernetes/compliance-system/" +
+		"env-config/local.git/bkms/env-setup/"
+	ExecuteCommandsWithPipe(
+		"kustomize", []string{"build", setupRepo},
+		"kubectl", []string{"apply", "-f", "-"},
+	)
 }
 
 // StartS3 start S3 in the local cluster
 func StartS3() {
+	if IsExistCommand("helm") {
+		err := ExecuteCommand("helm", "repo", "add", "minio", "https://helm.min.io/")
+		if err != nil {
+			log.Fatal("Can't add to the helm repo minio", err)
+		}
+		err = CreateNameSpace("minio")
+		if err != nil {
+			fmt.Println("Namespace already exist")
+		}
 
+		cfgMap := config.Config()
+		awsSecret := cfgMap.GetString("aws_secret_access_key")
+		awsAccessKey := cfgMap.GetString("aws_access_key_id")
+
+		err = ExecuteCommand("helm", "install", "--namespace", "minio", "minio", "minio/minio",
+			"--set", "persistence.storageClass=local-path",
+			"--set", fmt.Sprintf("accessKey=%s,secretKey=%s", awsAccessKey, awsSecret))
+
+		if err != nil {
+			log.Fatal("Error during deploy minio", err)
+		}
+		err = ExecuteCommand("kubectl", "patch", "svc", "minio", "-p",
+			"{\"spec\":{\"externalIPs\":[\"192.168.56.10\"]}}", "-n", "minio")
+	}
+}
+
+// CreateNameSpace create new namespace
+func CreateNameSpace(namespace string) error {
+	if IsExistCommand("kubectl") {
+		return ExecuteCommand("kubectl", "create", "namespace", namespace)
+	}
+	return nil
 }
 
 // CreateBuckets create default buckets
 func CreateBuckets() {
+	cfgMap := config.Config()
+	s3Buckets := cfgMap.GetStringSlice("s3-buckets")
 
-}
-
-// CreateNamespaces create namespaces
-func CreateNamespaces() {
-
+	for _, bucket := range s3Buckets {
+		CreateBucket(bucket)
+	}
 }
 
 // StartLocalCluster start local kubernetes cluster
@@ -35,7 +71,7 @@ func StartLocalCluster() {
 }
 
 // UpdateServiceDependency update source code of the dependency services
-func UpdateServiceDependency() {
+func UpdateServiceDependency(service string) {
 
 }
 

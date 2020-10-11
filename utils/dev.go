@@ -13,7 +13,11 @@ import (
 func ListPods(env string) {
 	fmt.Printf("List pods for env [%s]", env)
 	if IsExistCommand("kubectl") {
-		ExecuteCommand("kubectl", "get", "pod", "-n", env)
+		err := ExecuteCommand("kubectl", "get", "pod", "-n", env)
+
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -42,7 +46,7 @@ func StopService(path string, namespace string, profile string) {
 }
 
 //ExecuteCommand execute program in the shell
-func ExecuteCommand(command string, args ...string) {
+func ExecuteCommand(command string, args ...string) error {
 
 	cmd := exec.Command(command, args...)
 
@@ -50,11 +54,10 @@ func ExecuteCommand(command string, args ...string) {
 	cmd.Stdout = &out
 
 	err := cmd.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
+
 	fmt.Printf("Get output of the command: %s\n", out.String())
 
+	return err
 }
 
 // ExecuteCommandsWithPipe execute two commands with pipe command1 write output to the command2 as input
