@@ -24,6 +24,7 @@ import (
 var service string
 var mode string
 var namespace string
+var trigger string
 
 var devCmd = &cobra.Command{
 	Use:   "dev",
@@ -38,7 +39,7 @@ var startService = &cobra.Command{
 			mode = "dev"
 		}
 		if service != "" {
-			utils.StartService(service, mode)
+			utils.StartService(service, mode, trigger, namespace)
 		} else {
 			fmt.Println("You need to specify what service do you want to start")
 		}
@@ -50,6 +51,7 @@ var startDependencies = &cobra.Command{
 	Short: "Start dependencies for the service",
 	Run: func(cmd *cobra.Command, args []string) {
 		if service != "" {
+			utils.LocalEnvSetup()
 			utils.StartDependencies(service)
 		} else {
 			fmt.Println("You need to specify what service do you want to start")
@@ -61,11 +63,7 @@ var stopNS = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop services|service in the namespace",
 	Run: func(cmd *cobra.Command, args []string) {
-		if service != "" {
-			utils.StopBKMSService(service, namespace)
-		} else {
-			utils.StopBKMSServices(namespace)
-		}
+		utils.StopBKMSService(service, namespace)
 	},
 }
 
@@ -88,6 +86,8 @@ var prepareLocalCluster = &cobra.Command{
 func init() {
 	startService.Flags().StringVarP(&service, "service", "s", "", "Service name")
 	startService.Flags().StringVarP(&mode, "mode", "m", "", "Service mode")
+	startService.Flags().StringVarP(&trigger, "trigger", "t", "", "Trigger to recompile service, by default on every saved changes")
+	startService.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace where to start service")
 
 	startDependencies.Flags().StringVarP(&service, "service", "s", "", "Service name")
 

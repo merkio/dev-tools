@@ -5,12 +5,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-
+	"github.com/shirou/gopsutil/process"
 	"github.com/merkio/dev-tools/config"
+	"strings"
 )
 
 // PrepareLocalCluster preparation steps, execute env-
-func PrepareLocalCluster() {
+func LocalEnvSetup() {
 	setupRepo := "https://gitlab.business-keeper.local/dev/v2/kubernetes/compliance-system/" +
 		"env-config/local.git/bkms/env-setup/"
 	ExecuteCommandsWithPipe(
@@ -42,7 +43,7 @@ func StartS3() {
 		if err != nil {
 			log.Fatal("Error during deploy minio", err)
 		}
-		err = ExecuteCommand("kubectl", "patch", "svc", "minio", "-p",
+		_ = ExecuteCommand("kubectl", "patch", "svc", "minio", "-p",
 			"{\"spec\":{\"externalIPs\":[\"192.168.56.10\"]}}", "-n", "minio")
 	}
 }
@@ -67,22 +68,61 @@ func CreateBuckets() {
 
 // StartLocalCluster start local kubernetes cluster
 func StartLocalCluster() {
-
+	if IsExistCommand("vagrant") {
+		configMap := config.GetConfigMap()
+		err := os.Chdir(configMap.Repositories["k3s-local"]["directory"])
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = ExecuteCommand("vagrant", "up")
+		if err != nil {
+			log.Fatal(err)
+		}
+		StartS3()
+	}
 }
 
 // UpdateServiceDependency update source code of the dependency services
 func UpdateServiceDependency(service string) {
+	configMap := config.GetConfigMap()
 
+	dServices := configMap.Dependency[service]
+	for _, ds := range dServices {
+		if ds == "k3s-local" {
+			continue
+		}
+		svc := configMap.Repositories[ds]
+		repository := svc["directory"]
+		fmt.Printf("Update repository %s for service %s\n", repository, ds)
+
+		PullChanges(repository)
+	}
+}
+
+// ListPods show list of pods for the namespace (by default env = env)
+func ListPods(env string) {
+	fmt.Printf("List pods for env [%s]", env)
+	if IsExistCommand("kubectl") {
+		err := ExecuteCommand("kubectl", "get", "pod", "-n", env)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 // StartService start single service
-func StartService(service string, mode string) {
+func StartService(service string, mode string, trigger string, namespace string) {
 	configMap := config.GetConfigMap()
 
 	repo := configMap.Repositories[service]["directory"]
 	profile := configMap.Repositories[service]["profile"]
 
-	startService(repo, profile, mode)
+	if namespace != "" {
+		namespace = "env"
+	}
+
+	startService(repo, "skaffold", argsDefaultCommand(service, profile, mode, trigger, namespace)...)
 }
 
 // StartDependencies start all
@@ -91,10 +131,7 @@ func StartDependencies(service string) {
 
 	dServices := configMap.Dependency[service]
 	for _, ds := range dServices {
-		repo := configMap.Repositories[ds]["directory"]
-		profile := configMap.Repositories[ds]["profile"]
-
-		startService(repo, profile, "run")
+		StartService(ds, "run", "", "env")
 	}
 }
 
@@ -109,45 +146,98 @@ func StopBKMSService(service string, namespace string) {
 
 	configMap := config.GetConfigMap()
 
-	repo := configMap.Repositories[service]["directory"]
-	profile := configMap.Repositories[service]["profile"]
+	if service == "" {
+		for svc, values := range configMap.Repositories {
+			if svc == "k3s-local" {
+				continue
+			}
 
-	stopService(repo, namespace, profile)
-}
+			repo := values["directory"]
+			profile := values["profile"]
 
-// StopBKMSServices stop all services from the config file in the namespace
-func StopBKMSServices(namespace string) {
-	configMap := config.GetConfigMap()
-
-	if namespace == "" {
-		fmt.Println("Namespace is not specified, using 'env' namespace")
-		namespace = "env"
-	}
-
-	for service, values := range configMap.Repositories {
-		if service == "k3s-local" {
-			continue
+			killProcesses(svc, namespace)
+			stopService(repo, namespace, profile)
 		}
-		stopService(values["directory"], namespace, values["profile"])
+	} else {
+		repo := configMap.Repositories[service]["directory"]
+		profile := configMap.Repositories[service]["profile"]
+
+		killProcesses(service, namespace)
+		stopService(repo, namespace, profile)
 	}
+
 }
 
-func startService(path string, profile string, mode string) {
+func startService(path string, command string, args ...string) {
 
 	k8s := filepath.Join(path, "k8s")
 	err := os.Chdir(k8s)
 	if err != nil {
 		log.Fatalf("Unable to change directory to %s, %v", k8s, err)
 	}
-	RunService(k8s, profile, mode)
+	err = ExecuteCommand(command, args...)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
-func stopService(path string, namespace string, profile string) {
+func stopService(path string, command string, args ...string) {
 
 	k8s := filepath.Join(path, "k8s")
 	err := os.Chdir(k8s)
 	if err != nil {
 		log.Fatalf("Unable to change directory to %s, %v", k8s, err)
 	}
-	StopService(k8s, namespace, profile)
+	err = ExecuteCommand(command, args...)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+// killProcesses kill processes with service name and namespace
+func killProcesses(service string, namespace string) {
+
+	ps, err := process.Processes()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, proc := range ps {
+		name, e := proc.Name()
+		if e != nil {
+			fmt.Println(e)
+			return
+		}
+		if strings.Contains(name, "skaffold") || strings.Contains(name, "kubectl") {
+			cmdLine, e := proc.Cmdline()
+			if e != nil {
+				fmt.Println(e)
+				return
+			}
+			if strings.Contains(cmdLine, service) && strings.Contains(cmdLine, namespace) {
+				e := proc.Kill()
+				if e != nil {
+					fmt.Println(e)
+				}
+			}
+		}
+	}
+}
+
+func argsDefaultCommand(service string, profile string, mode string, trigger string, namespace string) []string {
+	args := []string{
+		mode, "--insecure-registry", "registry.192.168.56.11.nip.io:5000", "-n", namespace,
+		fmt.Sprintf("--default-repo=registry.192.168.56.11.nip.io:5000/bkag/%s/local", service),
+		"--port-forward", "--force=false", "--tail",
+	}
+
+	if profile != "" {
+		args = append(args, []string{"--profile", profile}...)
+	}
+	if trigger != "" {
+		args = append(args, []string{"--trigger", trigger}...)
+	}
+
+	return args
 }

@@ -48,21 +48,27 @@ func Config() *viper.Viper {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(dPath)
 	viper.AddConfigPath(usr.HomeDir)
-	viper.AddConfigPath(filepath.Join(usr.HomeDir, ".aws"))
 
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: \n%s", err))
 	}
 
-	// Read properties file with aws settings
-	viper.SetConfigType("properties")
-	viper.SetConfigName("credentials")
+	awsConf := filepath.Join(usr.HomeDir, ".aws")
+	// Check if the file is exist
+	if _, err := os.Stat(awsConf); err == nil {
+		fmt.Printf("File exists %s\n", awsConf)
 
-	// Merge all configs in one map
-	err = viper.MergeInConfig() // Find and read the config file
-	if err != nil {             // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error config file: \n%s", err))
+		// Read properties file with aws settings
+		viper.AddConfigPath(awsConf)
+		viper.SetConfigType("properties")
+		viper.SetConfigName("credentials")
+
+		// Merge all configs in one map
+		err = viper.MergeInConfig() // Find and read the config file
+		if err != nil {             // Handle errors reading the config file
+			panic(fmt.Errorf("Fatal error config file: \n%s", err))
+		}
 	}
 	return viper.GetViper()
 }

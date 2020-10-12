@@ -9,17 +9,6 @@ import (
 	"os/exec"
 )
 
-// ListPods show list of pods for the namespace (by default env = env)
-func ListPods(env string) {
-	fmt.Printf("List pods for env [%s]", env)
-	if IsExistCommand("kubectl") {
-		err := ExecuteCommand("kubectl", "get", "pod", "-n", env)
-
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-}
 
 // IsExistCommand check if the program is in the PATH
 func IsExistCommand(program string) bool {
@@ -33,16 +22,6 @@ func IsExistCommand(program string) bool {
 	}
 	fmt.Printf("%s is available at %s\n", program, path)
 	return true
-}
-
-// RunService launch service in different modes
-func RunService(path string, profile string, mode string) {
-
-}
-
-// StopService stop service in the namespace
-func StopService(path string, namespace string, profile string) {
-
 }
 
 //ExecuteCommand execute program in the shell
