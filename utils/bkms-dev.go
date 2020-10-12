@@ -2,15 +2,15 @@ package utils
 
 import (
 	"fmt"
+	"github.com/merkio/dev-tools/config"
+	"github.com/shirou/gopsutil/process"
 	"log"
 	"os"
 	"path/filepath"
-	"github.com/shirou/gopsutil/process"
-	"github.com/merkio/dev-tools/config"
 	"strings"
 )
 
-// PrepareLocalCluster preparation steps, execute env-
+// LocalEnvSetup preparation steps, for launch services
 func LocalEnvSetup() {
 	setupRepo := "https://gitlab.business-keeper.local/dev/v2/kubernetes/compliance-system/" +
 		"env-config/local.git/bkms/env-setup/"
@@ -82,6 +82,22 @@ func StartLocalCluster() {
 	}
 }
 
+// StopLocalCluster start local kubernetes cluster
+func StopLocalCluster() {
+	if IsExistCommand("vagrant") {
+		configMap := config.GetConfigMap()
+		err := os.Chdir(configMap.Repositories["k3s-local"]["directory"])
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = ExecuteCommand("vagrant", "halt")
+		if err != nil {
+			log.Fatal(err)
+		}
+		StartS3()
+	}
+}
+
 // UpdateServiceDependency update source code of the dependency services
 func UpdateServiceDependency(service string) {
 	configMap := config.GetConfigMap()
@@ -100,10 +116,10 @@ func UpdateServiceDependency(service string) {
 }
 
 // ListPods show list of pods for the namespace (by default env = env)
-func ListPods(env string) {
-	fmt.Printf("List pods for env [%s]", env)
+func ListPods(namespace string) {
+	fmt.Printf("List pods for namespace [%s]", namespace)
 	if IsExistCommand("kubectl") {
-		err := ExecuteCommand("kubectl", "get", "pod", "-n", env)
+		err := ExecuteCommand("kubectl", "get", "pod", "-n", namespace)
 
 		if err != nil {
 			fmt.Println(err)

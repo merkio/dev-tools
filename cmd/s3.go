@@ -126,6 +126,18 @@ var restoreFromDisk = &cobra.Command{
 	},
 }
 
+var createBucket = &cobra.Command{
+	Use:   "create-bucket",
+	Short: "Create bucket",
+	Run: func(cmd *cobra.Command, args []string) {
+		if bucket == "" {
+			fmt.Println("Bucket name is required!")
+			os.Exit(1)
+		}
+		utils.CreateBucket(bucket)
+	},
+}
+
 func init() {
 	deleteBucket.Flags().StringVarP(&bucket, "bucket", "b", "", "Bucket name")
 	force = *deleteBucket.Flags().BoolP("force", "f", false, "Force delete, if bucket contains data")
@@ -139,6 +151,10 @@ func init() {
 	restoreFromDisk.Flags().StringVarP(&accountID, "account-id", "a", "", "Account Id")
 	restoreFromDisk.Flags().StringVarP(&from, "from", "f", "", "Absolute local path")
 
+	createBucket.Flags().StringVarP(&bucket, "bucket", "b", "", "Bucket name")
+
+	s3Cmd.AddCommand(createBucket)
+	s3Cmd.AddCommand(deleteBucket)
 	s3Cmd.AddCommand(listBuckets)
 	s3Cmd.AddCommand(listObjects)
 	s3Cmd.AddCommand(backupToDisk)

@@ -47,8 +47,7 @@ func CreateBucket(bucket string) {
 	fmt.Printf("Create bucket %s\n", bucket)
 	svc := s3.New(createSession())
 	input := &s3.CreateBucketInput{
-		Bucket:                    aws.String(bucket),
-		CreateBucketConfiguration: &s3.CreateBucketConfiguration{},
+		Bucket: aws.String(bucket),
 	}
 
 	result, err := svc.CreateBucket(input)
@@ -168,10 +167,9 @@ func DownloadObject(bucket string, key string, to string) {
 	downloader := s3manager.NewDownloader(createSession())
 	// Download the item from the bucket. If an err occurs, call exitErrorf. Otherwise, notify the user that the download succeeded.
 
-	filePath := filepath.Join(to, key)
-	file, err := os.Open(filePath)
+	file, err := os.OpenFile(to, 64, 0777)
 	if err != nil {
-		fmt.Printf("Unable to open file %s\n%s", filePath, err)
+		fmt.Printf("Unable to open file %s\n%s", to, err)
 	}
 	numBytes, err := downloader.Download(file,
 		&s3.GetObjectInput{
@@ -256,8 +254,11 @@ func createSession() *session.Session {
 
 	s, err := session.NewSession(&aws.Config{
 		Credentials: credentials.NewStaticCredentials(awsAccessKey, awsSecret, ""),
-		Region:      aws.String("us-west-2"),
-		Endpoint:    aws.String(endpointURL)})
+		Endpoint:    aws.String(endpointURL),
+		Region:           aws.String("us-east-1"),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(true),
+	})
 
 	if err != nil {
 		log.Fatal(err)

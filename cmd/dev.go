@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/merkio/dev-tools/utils"
 	"github.com/spf13/cobra"
@@ -43,6 +44,28 @@ var startService = &cobra.Command{
 		} else {
 			fmt.Println("You need to specify what service do you want to start")
 		}
+	},
+}
+
+var listPodsInNamespace = &cobra.Command{
+	Use:   "list",
+	Short: "List of pods in the namespace",
+	Run: func(cmd *cobra.Command, args []string) {
+		if namespace == "" {
+			namespace = "env"
+		}
+		utils.ListPods(namespace)
+	},
+}
+
+var updateDependencies = &cobra.Command{
+	Use:   "update-dep",
+	Short: "Update dependencies for the service",
+	Run: func(cmd *cobra.Command, args []string) {
+		if service == "" {
+			log.Fatal("Please provide the service name")
+		}
+		utils.UpdateServiceDependency(service)
 	},
 }
 
@@ -75,11 +98,19 @@ var createS3Buckets = &cobra.Command{
 	},
 }
 
-var prepareLocalCluster = &cobra.Command{
-	Use:   "prepare",
+var startLocalCluster = &cobra.Command{
+	Use:   "start-cluster",
 	Short: "Execute preparation steps for local cluster (e.g. create namespaces, create s3 buckets, create databases)",
 	Run: func(cmd *cobra.Command, args []string) {
+		utils.StartLocalCluster()
+	},
+}
 
+var stopLocalCluster = &cobra.Command{
+	Use:   "stop-cluster",
+	Short: "Execute preparation steps for local cluster (e.g. create namespaces, create s3 buckets, create databases)",
+	Run: func(cmd *cobra.Command, args []string) {
+		utils.StopLocalCluster()
 	},
 }
 
@@ -91,9 +122,18 @@ func init() {
 
 	startDependencies.Flags().StringVarP(&service, "service", "s", "", "Service name")
 
+	updateDependencies.Flags().StringVarP(&service, "service", "s", "", "Service name")
+
 	stopNS.Flags().StringVarP(&service, "service", "s", "", "Service name")
 	stopNS.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace")
 
+	listPodsInNamespace.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace")
+
+	devCmd.AddCommand(listPodsInNamespace)
+	devCmd.AddCommand(updateDependencies)
+	devCmd.AddCommand(createS3Buckets)
+	devCmd.AddCommand(startLocalCluster)
+	devCmd.AddCommand(stopLocalCluster)
 	devCmd.AddCommand(startService)
 	devCmd.AddCommand(startDependencies)
 	devCmd.AddCommand(stopNS)
