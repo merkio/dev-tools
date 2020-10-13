@@ -36,9 +36,7 @@ func Config() *viper.Viper {
 	// Build config path
 	cPath := filepath.Join(dPath, "config.yaml")
 	// Check if the file is exist
-	if _, err := os.Stat(cPath); err == nil {
-		fmt.Printf("File exists %s\n", cPath)
-	} else {
+	if _, err := os.Stat(cPath); err != nil {
 		fmt.Printf("File does not exist %s\n", cPath)
 	}
 

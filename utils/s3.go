@@ -164,13 +164,25 @@ func UploadObject(bucket string, filePath string, key string, tag string) {
 // DownloadObject put file to the path with key
 func DownloadObject(bucket string, key string, to string) {
 	fmt.Printf("Download file %s from bucket %s to the path %s\n", key, bucket, to)
+
 	downloader := s3manager.NewDownloader(createSession())
 	// Download the item from the bucket. If an err occurs, call exitErrorf. Otherwise, notify the user that the download succeeded.
 
-	file, err := os.OpenFile(to, 64, 0777)
-	if err != nil {
-		fmt.Printf("Unable to open file %s\n%s", to, err)
+	if key == bucket {
+		e := os.MkdirAll(filepath.Join(to, bucket), 0770)
+
+		if e != nil {
+			fmt.Println(e)
+			return
+		}
 	}
+
+	file, err := createFile(to)
+
+	if err != nil {
+		log.Println("Couldn't create file with path\n", err)
+	}
+
 	numBytes, err := downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(bucket),
@@ -186,9 +198,7 @@ func DownloadObject(bucket string, key string, to string) {
 // DownloadBucket download all files from bucket to the path
 func DownloadBucket(bucket string, to string) {
 	for _, obj := range ListObjects(bucket, "") {
-		path := filepath.Join(to, bucket, obj)
-
-		DownloadObject(bucket, obj, path)
+		DownloadObject(bucket, obj, to)
 	}
 }
 
@@ -287,4 +297,11 @@ func bucketsToStrings(vs []*s3.Bucket, f func(s3.Bucket) string) []string {
 		vsm[i] = f(*v)
 	}
 	return vsm
+}
+
+func createFile(p string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(p), 0770); err != nil {
+		return nil, err
+	}
+	return os.Create(p)
 }
